@@ -1,8 +1,8 @@
-FROM node:22-alpine AS frontend
+FROM node:20-alpine AS frontend
 WORKDIR /src/frontend
 COPY frontend/package*.json ./
-RUN npm install
-COPY frontend/ ./
+RUN npm ci --no-audit --no-fund
+COPY frontend ./
 RUN npm run build
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS backend-build
