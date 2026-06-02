@@ -1,0 +1,16 @@
+{
+  "profiles": {
+    "Taupunkt.Api local": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "applicationUrl": "http://localhost:8080",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "PORT": "8080",
+        "DATABASE_URL": "postgres://postgres:postgres@localhost:5432/taupunkt",
+        "APP_API_KEY": "dev-key"
+      }
+    }
+  }
+}

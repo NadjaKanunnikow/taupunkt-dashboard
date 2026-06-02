@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: taupunkt-dashboard
+    runtime: docker
+    healthCheckPath: /api/status/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: taupunkt-db
+          property: connectionString
+      - key: APP_API_KEY
+        generateValue: true
+
+databases:
+  - name: taupunkt-db
+    databaseName: taupunkt
+    user: taupunkt
+    # If you omit plan, Render uses the current default for new Postgres databases.
+    # For a temporary development DB you can set: plan: free
+    # For a small persistent DB you can set: plan: basic-256mb

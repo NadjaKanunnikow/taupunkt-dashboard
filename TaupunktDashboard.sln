@@ -1,0 +1,55 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.35013.160
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Taupunkt.Api", "backend\Taupunkt.Api.csproj", "{5E91F8E3-7E0C-4F21-B2F6-5D57C723A7D3}"
+EndProject
+Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "frontend", "frontend", "{DA343040-B987-459C-9215-D9373B7F900F}"
+	ProjectSection(SolutionItems) = preProject
+		frontend\index.html = frontend\index.html
+		frontend\package.json = frontend\package.json
+		frontend\package-lock.json = frontend\package-lock.json
+		frontend\tsconfig.json = frontend\tsconfig.json
+		frontend\vite.config.ts = frontend\vite.config.ts
+	EndProjectSection
+EndProject
+Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "frontend-src", "frontend-src", "{53ED930C-226D-4F59-9370-7045920A8919}"
+	ProjectSection(SolutionItems) = preProject
+		frontend\src\App.tsx = frontend\src\App.tsx
+		frontend\src\api.ts = frontend\src\api.ts
+		frontend\src\main.tsx = frontend\src\main.tsx
+		frontend\src\styles.css = frontend\src\styles.css
+		frontend\src\types.ts = frontend\src\types.ts
+		frontend\src\vite-env.d.ts = frontend\src\vite-env.d.ts
+	EndProjectSection
+EndProject
+Project("{66A26720-8FB5-11D2-AA7E-00C04F688DDE}") = "deployment-and-docs", "deployment-and-docs", "{2248160E-5B43-41D7-86EA-0226ED01E921}"
+	ProjectSection(SolutionItems) = preProject
+		.dockerignore = .dockerignore
+		.gitignore = .gitignore
+		Dockerfile = Dockerfile
+		docker-compose.yml = docker-compose.yml
+		render.yaml = render.yaml
+		README.md = README.md
+		docs\RASPBERRY_PI_CONFIGURATION.md = docs\RASPBERRY_PI_CONFIGURATION.md
+		docs\RIDER.md = docs\RIDER.md
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5E91F8E3-7E0C-4F21-B2F6-5D57C723A7D3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E91F8E3-7E0C-4F21-B2F6-5D57C723A7D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5E91F8E3-7E0C-4F21-B2F6-5D57C723A7D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5E91F8E3-7E0C-4F21-B2F6-5D57C723A7D3}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{53ED930C-226D-4F59-9370-7045920A8919} = {DA343040-B987-459C-9215-D9373B7F900F}
+	EndGlobalSection
+EndGlobal
