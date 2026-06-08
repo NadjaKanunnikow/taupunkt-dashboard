@@ -71,7 +71,7 @@ if (!dbReady)
     Console.WriteLine("[startup] WARNING: Could not initialise database — app will start anyway. Check DATABASE_URL and Neon status.");
 }
 
-app.MapGet("/", () => Results.Ok(new
+app.MapGet("/api", () => Results.Ok(new
 {
     service = "taupunkt-api",
     status = "GOOD",
