@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis
 } from 'recharts';
-import { ApiError, api, getStoredApiKey, setStoredApiKey } from './api';
+import { api } from './api';
 import type {
   ControlSettings,
   DashboardSnapshot,
@@ -53,7 +53,6 @@ const locationLabels: Record<LocationKey, string> = {
 
 function App() {
   const [route, setRoute] = useState<Route>(parseRoute);
-  const [apiKeyVersion, setApiKeyVersion] = useState(0);
 
   useEffect(() => {
     const onHashChange = () => setRoute(parseRoute());
@@ -61,45 +60,39 @@ function App() {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
-  const onApiKeySaved = () => setApiKeyVersion((value) => value + 1);
-
   return (
     <main className="app-shell">
       <header className="hero">
         <div>
           <p className="eyebrow">Joy-Pi / Raspberry Pi</p>
           <h1>Taupunkt Dashboard</h1>
-          <p className="hero-text">
-            Temperatur, Feuchtigkeit, Taupunkt und Lüfterstatus aus dem Python-Controller.
-          </p>
         </div>
-        <a className="home-link" href="#/">Startseite</a>
+        {route.page !== 'home' && <a className="small-button" href="#/">← Startseite</a>}
       </header>
 
       {route.page === 'home' ? (
-        <HomePage apiKeyVersion={apiKeyVersion} onApiKeySaved={onApiKeySaved} />
+        <HomePage />
       ) : (
         <HistoryPage
           metric={route.metric}
           location={route.location}
-          apiKeyVersion={apiKeyVersion}
-          onApiKeySaved={onApiKeySaved}
         />
       )}
     </main>
   );
 }
 
-function HomePage({ apiKeyVersion, onApiKeySaved }: { apiKeyVersion: number; onApiKeySaved: () => void }) {
+function HomePage() {
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [settings, setSettings] = useState<ControlSettings | null>(null);
   const [snapshots, setSnapshots] = useState<DashboardSnapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [authError, setAuthError] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
+  // Polling refresh: only updates charts and health — never resets the
+  // control panel form so the user can keep editing settings uninterrupted.
+  const refreshData = useCallback(async () => {
     setError(null);
     try {
       const nextHealth = await api.health();
@@ -107,50 +100,45 @@ function HomePage({ apiKeyVersion, onApiKeySaved }: { apiKeyVersion: number; onA
       const nextSnapshots = await api.latest(10);
       setSnapshots(nextSnapshots);
       setLastRefresh(new Date().toISOString());
-      const nextSettings = await api.control();
-      setSettings(nextSettings);
-      setAuthError(false);
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        setAuthError(true);
-        setError('API key fehlt oder ist falsch. Speichere den gleichen Key wie in Render APP_API_KEY.');
-      } else {
-        setError(err instanceof Error ? err.message : 'Unbekannter Fehler');
-      }
+      setError(err instanceof Error ? err.message : 'Unbekannter Fehler');
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // Settings are loaded once on mount (and after every save via onSettingsChanged).
+  const loadSettings = useCallback(async () => {
+    try {
+      const nextSettings = await api.control();
+      setSettings(nextSettings);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unbekannter Fehler');
+    }
+  }, []);
+
   useEffect(() => {
     let alive = true;
-    const run = async () => {
-      if (alive) {
-        await refresh();
-      }
+    const init = async () => {
+      if (!alive) return;
+      await Promise.all([refreshData(), loadSettings()]);
+    };
+    const poll = async () => {
+      if (alive) await refreshData();
     };
 
-    run();
-    const interval = window.setInterval(run, 30_000);
+    init();
+    const interval = window.setInterval(poll, 5_000);
     return () => {
       alive = false;
       window.clearInterval(interval);
     };
-  }, [refresh, apiKeyVersion]);
+  }, [refreshData, loadSettings]);
 
   const latest = snapshots.length > 0 ? snapshots[snapshots.length - 1] : undefined;
 
   return (
     <>
-      <AdminKeyPanel
-        health={health}
-        forceOpen={authError}
-        onSaved={() => {
-          onApiKeySaved();
-          refresh();
-        }}
-      />
-
       {error && <div className="banner error">{error}</div>}
       {loading && <div className="banner">Lade aktuelle Daten...</div>}
 
@@ -199,7 +187,7 @@ function HomePage({ apiKeyVersion, onApiKeySaved }: { apiKeyVersion: number; onA
           </div>
         </div>
         <ChartCard
-          title="Taupunkt-Differenz innen minus außen"
+          title="Taupunkt-Differenz"
           unit="°C"
           data={makeDifferenceData(snapshots)}
           historyHref="#/history/dewPointDifference"
@@ -340,12 +328,6 @@ function ControlPanel({
             </label>
           </div>
           <div className="button-row wrap">
-            <button onClick={() => send({ dewPointDiffOn: onNumber ?? settings.fanOnThresholdC })} disabled={!isManual || saving}>
-              Nur EIN-Schwelle speichern
-            </button>
-            <button onClick={() => send({ dewPointDiffOff: offNumber ?? settings.fanOffThresholdC })} disabled={!isManual || saving}>
-              Nur AUS-Schwelle speichern
-            </button>
             <button
               onClick={() => send({
                 dewPointDiffOn: onNumber ?? settings.fanOnThresholdC,
@@ -353,7 +335,7 @@ function ControlPanel({
               })}
               disabled={!isManual || saving}
             >
-              Beide Schwellen speichern
+              Schwellen speichern
             </button>
           </div>
         </div>
@@ -367,7 +349,7 @@ function ControlPanel({
                 type="time"
                 value={displayTime}
                 onChange={(event) => setDisplayTime(event.target.value)}
-                disabled={!isManual || saving}
+                disabled={saving || !isManual || !settings.usePiTime}
               />
             </label>
             <label>
@@ -376,18 +358,25 @@ function ControlPanel({
             </label>
           </div>
           <div className="button-row wrap">
-            <button onClick={() => send({ displayTime })} disabled={!isManual || saving}>
+            <button
+              onClick={() => send({ displayTime, usePiTime: false })}
+              disabled={saving || !isManual || !settings.usePiTime}
+            >
               Website-Zeit auf Pi setzen
             </button>
             <button
-              onClick={() => send(settings.usePiTime ? { usePiTime: false, displayTime } : { usePiTime: true })}
-              disabled={saving}
+              onClick={() => send({ usePiTime: true })}
+              disabled={saving || settings.usePiTime}
             >
-              {settings.usePiTime ? 'Pi-Zeit ausschalten' : 'Pi-Zeit einschalten'}
+              Pi-Zeit einschalten
             </button>
           </div>
           <p className="hint">
-            Dieser Pi-Zeit-Schalter ist in Automatik und Manuell verfügbar.
+            {settings.usePiTime
+              ? isManual
+                ? 'Zeit eingeben und „Website-Zeit auf Pi setzen" drücken.'
+                : 'Im Automatik-Modus läuft der Pi mit seiner eigenen Uhr.'
+              : '„Pi-Zeit einschalten" stellt den Pi wieder auf seine eigene Uhr.'}
           </p>
         </div>
       </div>
@@ -494,14 +483,10 @@ function ChartTooltip({ active, payload, unit, showFan }: any) {
 
 function HistoryPage({
   metric,
-  location,
-  apiKeyVersion,
-  onApiKeySaved
+  location
 }: {
   metric: MetricKey;
   location?: LocationKey;
-  apiKeyVersion: number;
-  onApiKeySaved: () => void;
 }) {
   const resolvedLocation = metric === 'dewPointDifference' ? undefined : location ?? 'inside';
   const [health, setHealth] = useState<HealthStatus | null>(null);
@@ -536,7 +521,7 @@ function HistoryPage({
     return () => {
       alive = false;
     };
-  }, [metric, resolvedLocation, apiKeyVersion]);
+  }, [metric, resolvedLocation]);
 
   const title = metric === 'dewPointDifference'
     ? metricLabels[metric]
@@ -544,7 +529,6 @@ function HistoryPage({
 
   return (
     <>
-      <AdminKeyPanel health={health} forceOpen={false} onSaved={onApiKeySaved} />
       <section className="history-page">
         <div className="history-header">
           <div>
@@ -606,64 +590,6 @@ function HistoryPage({
   );
 }
 
-function AdminKeyPanel({
-  health,
-  forceOpen,
-  onSaved
-}: {
-  health: HealthStatus | null;
-  forceOpen: boolean;
-  onSaved: () => void;
-}) {
-  const [open, setOpen] = useState(forceOpen);
-  const [draft, setDraft] = useState(getStoredApiKey());
-
-  useEffect(() => {
-    if (forceOpen) {
-      setOpen(true);
-    }
-  }, [forceOpen]);
-
-  if (!health?.apiKeyRequired && !open && !getStoredApiKey()) {
-    return null;
-  }
-
-  return (
-    <section className="admin-key-panel">
-      <button className="link-button" onClick={() => setOpen((value) => !value)}>
-        {open ? 'API-Key verbergen' : 'API-Key setzen'}
-      </button>
-      {health?.apiKeyRequired && <span className="key-required">APP_API_KEY ist aktiv.</span>}
-      {open && (
-        <div className="admin-key-form">
-          <input
-            type="password"
-            value={draft}
-            placeholder="APP_API_KEY aus Render"
-            onChange={(event) => setDraft(event.target.value)}
-          />
-          <button
-            onClick={() => {
-              setStoredApiKey(draft);
-              onSaved();
-            }}
-          >
-            Key speichern
-          </button>
-          <button
-            onClick={() => {
-              setDraft('');
-              setStoredApiKey('');
-              onSaved();
-            }}
-          >
-            Key löschen
-          </button>
-        </div>
-      )}
-    </section>
-  );
-}
 
 function StatusCard({ label, value }: { label: string; value: string }) {
   return (

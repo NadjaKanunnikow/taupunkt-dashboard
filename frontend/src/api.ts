@@ -47,13 +47,18 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!response.ok) {
     let message = `HTTP ${response.status}`;
     try {
-      const payload = await response.json();
-      message = payload.error ?? payload.title ?? message;
-    } catch {
+      // Read body once as text, then optionally parse as JSON — avoids "body stream already read" error
       const text = await response.text();
       if (text) {
-        message = text;
+        try {
+          const payload = JSON.parse(text);
+          message = payload.error ?? payload.title ?? message;
+        } catch {
+          message = text;
+        }
       }
+    } catch {
+      // ignore read errors
     }
     throw new ApiError(response.status, message);
   }

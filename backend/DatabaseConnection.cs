@@ -40,7 +40,6 @@ public static class DatabaseConnection
             Username = username,
             Password = password,
             SslMode = SslMode.Prefer,
-            TrustServerCertificate = true,
             Pooling = true
         };
 

@@ -43,7 +43,33 @@ app.UseCors("frontend");
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-await app.Services.GetRequiredService<TaupunktRepository>().InitializeAsync();
+// Retry DB init: the DB may not be ready yet (Docker startup race, Neon free-tier wake-up, etc.).
+// We retry up to maxAttempts times; if still unavailable we log clearly and continue anyway —
+// the app will keep running and the health endpoint will report database=error.
+const int maxAttempts = 15;
+var dbReady = false;
+for (var attempt = 1; attempt <= maxAttempts; attempt++)
+{
+    try
+    {
+        await app.Services.GetRequiredService<TaupunktRepository>().InitializeAsync();
+        Console.WriteLine($"[startup] Database initialised on attempt {attempt}.");
+        dbReady = true;
+        break;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[startup] DB not ready (attempt {attempt}/{maxAttempts}): {ex.Message}");
+        if (attempt < maxAttempts)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(4));
+        }
+    }
+}
+if (!dbReady)
+{
+    Console.WriteLine("[startup] WARNING: Could not initialise database — app will start anyway. Check DATABASE_URL and Neon status.");
+}
 
 app.MapGet("/", () => Results.Ok(new
 {
@@ -73,9 +99,9 @@ app.MapGet("/api/status/health", async (TaupunktRepository repository) =>
     {
         ok = databaseOk,
         database = databaseOk ? "ok" : "error",
-        apiKeyRequired = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("APP_API_KEY"))
-            || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("API_KEY"))
-            || !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ADMIN_TOKEN")),
+        // The dashboard is public — no API key is needed to view or control.
+        // APP_API_KEY only protects the Pi's POST /api/measurements endpoint.
+        apiKeyRequired = false,
         utcNow = DateTimeOffset.UtcNow
     });
 });
@@ -142,13 +168,8 @@ app.MapGet("/api/control", async (TaupunktRepository repository) =>
     return Results.Ok(settings);
 });
 
-app.MapPatch("/api/control", async (HttpRequest http, TaupunktRepository repository, ControlUpdateRequest request) =>
+app.MapPatch("/api/control", async (TaupunktRepository repository, ControlUpdateRequest request) =>
 {
-    if (!Security.HasAdminAccess(http))
-    {
-        return Results.Unauthorized();
-    }
-
     var result = await repository.UpdateControlAsync(request);
     if (result.Error is not null)
     {
@@ -158,13 +179,8 @@ app.MapPatch("/api/control", async (HttpRequest http, TaupunktRepository reposit
     return Results.Ok(result.Settings);
 });
 
-app.MapPut("/api/control", async (HttpRequest http, TaupunktRepository repository, ControlUpdateRequest request) =>
+app.MapPut("/api/control", async (TaupunktRepository repository, ControlUpdateRequest request) =>
 {
-    if (!Security.HasAdminAccess(http))
-    {
-        return Results.Unauthorized();
-    }
-
     var result = await repository.UpdateControlAsync(request);
     if (result.Error is not null)
     {

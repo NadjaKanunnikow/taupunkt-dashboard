@@ -1,9 +1,10 @@
 FROM node:20-alpine AS frontend
 WORKDIR /src/frontend
-COPY frontend/package*.json ./
-RUN npm ci --no-audit --no-fund
+RUN npm install -g pnpm
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY frontend ./
-RUN npm run build
+RUN pnpm run build
 
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS backend-build
 WORKDIR /src

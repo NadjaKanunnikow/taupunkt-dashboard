@@ -1,13 +1,25 @@
 {
   "profiles": {
-    "Taupunkt.Api local": {
+    "Taupunkt.Api — Neon (без Docker)": {
       "commandName": "Project",
       "dotnetRunMessages": true,
-      "launchBrowser": true,
-      "applicationUrl": "http://localhost:8080",
+      "launchBrowser": false,
+      "applicationUrl": "http://localhost:5000",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "PORT": "8080",
+        "PORT": "5000",
+        "DATABASE_URL": "postgresql://neondb_owner:npg_o9QJgN7qaFbT@ep-restless-surf-agma8564.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require",
+        "APP_API_KEY": "dev-key"
+      }
+    },
+    "Taupunkt.Api — локальный Docker postgres": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "http://localhost:5000",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "PORT": "5000",
         "DATABASE_URL": "postgres://postgres:postgres@localhost:5432/taupunkt",
         "APP_API_KEY": "dev-key"
       }

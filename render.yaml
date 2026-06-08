@@ -1,20 +1,27 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Render Blueprint — 100 % free tier
+#
+# Render removed free managed PostgreSQL in 2024.
+# Instead use a free external database such as Neon (https://neon.tech) —
+# 5 GB, no credit card required.
+#
+# Setup steps:
+#   1. Create a free project on neon.tech.
+#   2. Copy the connection string (postgres://... format).
+#   3. After Render deploys this service, go to:
+#        Dashboard → taupunkt-dashboard → Environment
+#      and paste the connection string as the value for DATABASE_URL.
+#   4. Redeploy (or Render will pick it up on the next deploy).
+# ─────────────────────────────────────────────────────────────────────────────
+
 services:
   - type: web
     name: taupunkt-dashboard
     runtime: docker
+    plan: free
     healthCheckPath: /api/status/health
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: taupunkt-db
-          property: connectionString
+        sync: false   # paste your Neon (or other free PostgreSQL) connection string here
       - key: APP_API_KEY
         generateValue: true
-
-databases:
-  - name: taupunkt-db
-    databaseName: taupunkt
-    user: taupunkt
-    # If you omit plan, Render uses the current default for new Postgres databases.
-    # For a temporary development DB you can set: plan: free
-    # For a small persistent DB you can set: plan: basic-256mb
