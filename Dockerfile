@@ -14,6 +14,8 @@ COPY backend/ ./backend/
 RUN dotnet publish ./backend/Taupunkt.Api.csproj -c Release -o /app/publish /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS runtime
+# Alpine has no ICU libraries — use invariant globalization mode to prevent segfault on startup
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
 WORKDIR /app
 COPY --from=backend-build /app/publish ./
 COPY --from=frontend /src/frontend/dist ./wwwroot
